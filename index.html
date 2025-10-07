@@ -1,0 +1,1099 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Outil d'analyse des études antérieures - LCL</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Quicksand', sans-serif;
+            background: linear-gradient(135deg, #123924 0%, #649183 100%);
+            min-height: 100vh;
+            padding: 30px 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 24px;
+            box-shadow: 0 20px 80px rgba(0,0,0,0.25);
+            overflow: hidden;
+        }
+
+        .header {
+            background: #123924;
+            color: white;
+            padding: 40px 50px;
+            position: relative;
+        }
+
+        .header::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #F15B2D 0%, #649183 100%);
+        }
+
+        .header h1 {
+            font-size: 2.2em;
+            font-weight: 700;
+            margin-bottom: 8px;
+            letter-spacing: -0.5px;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+            font-weight: 400;
+        }
+
+        .config-section {
+            padding: 40px 50px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .input-group {
+            margin-bottom: 25px;
+        }
+
+        .input-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #123924;
+            font-size: 1em;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 14px 18px;
+            border: 2px solid #e9ecef;
+            border-radius: 12px;
+            font-size: 1em;
+            font-family: 'Quicksand', sans-serif;
+            transition: all 0.3s;
+            background: white;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: #649183;
+            box-shadow: 0 0 0 4px rgba(100, 145, 131, 0.1);
+        }
+
+        .upload-area {
+            border: 3px dashed #649183;
+            border-radius: 16px;
+            padding: 50px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: white;
+            margin-top: 10px;
+        }
+
+        .upload-area:hover {
+            border-color: #123924;
+            background: #f8faf9;
+            transform: translateY(-2px);
+        }
+
+        .upload-area.drag-over {
+            border-color: #F15B2D;
+            background: #fff5f2;
+            transform: scale(1.02);
+        }
+
+        .upload-icon {
+            font-size: 3.5em;
+            margin-bottom: 15px;
+            color: #649183;
+        }
+
+        .upload-area h3 {
+            color: #123924;
+            font-size: 1.3em;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .upload-area p {
+            color: #6c757d;
+            font-size: 1em;
+        }
+
+        .upload-area .small-text {
+            margin-top: 12px;
+            font-size: 0.9em;
+            color: #649183;
+            font-weight: 500;
+        }
+
+        .files-list {
+            margin-top: 25px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .file-tag {
+            background: #123924;
+            color: white;
+            padding: 10px 18px;
+            border-radius: 20px;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.95em;
+            font-weight: 500;
+        }
+
+        .file-tag button {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .file-tag button:hover {
+            background: #F15B2D;
+        }
+
+        .analyze-btn {
+            width: 100%;
+            padding: 18px;
+            background: linear-gradient(135deg, #F15B2D 0%, #ff7a52 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 1.15em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 25px;
+            font-family: 'Quicksand', sans-serif;
+            letter-spacing: 0.3px;
+        }
+
+        .analyze-btn:hover:not(:disabled) {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 30px rgba(241, 91, 45, 0.4);
+        }
+
+        .analyze-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .progress-section {
+            padding: 40px 50px;
+            display: none;
+            background: white;
+        }
+
+        .progress-section.active {
+            display: block;
+        }
+
+        .progress-bar-container {
+            width: 100%;
+            height: 35px;
+            background: #e9ecef;
+            border-radius: 20px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #649183 0%, #123924 100%);
+            width: 0%;
+            transition: width 0.5s ease-out;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 0.95em;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .progress-bar::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            animation: shimmer 2s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+
+        .progress-status {
+            text-align: center;
+            color: #123924;
+            font-size: 1.05em;
+            margin-top: 12px;
+            font-weight: 500;
+            min-height: 60px;
+        }
+
+        .progress-details {
+            font-size: 0.9em;
+            color: #6c757d;
+            margin-top: 8px;
+            font-style: italic;
+        }
+
+        .progress-spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 3px solid #649183;
+            border-top: 3px solid transparent;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .results-section {
+            padding: 40px 50px;
+            display: none;
+            background: white;
+        }
+
+        .results-section.active {
+            display: block;
+        }
+
+        .results-section h2 {
+            color: #123924;
+            font-size: 1.8em;
+            margin-bottom: 20px;
+            font-weight: 700;
+        }
+
+        .analysis-result {
+            background: #f8faf9;
+            padding: 30px;
+            border-radius: 16px;
+            border-left: 5px solid #649183;
+            margin-bottom: 30px;
+            white-space: pre-wrap;
+            line-height: 1.7;
+            font-size: 0.95em;
+            color: #2d3748;
+        }
+
+        .chat-section {
+            border-top: 2px solid #e9ecef;
+            padding-top: 30px;
+            margin-top: 10px;
+        }
+
+        .chat-section h3 {
+            color: #123924;
+            font-size: 1.4em;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+
+        .chat-messages {
+            max-height: 450px;
+            overflow-y: auto;
+            margin-bottom: 20px;
+            padding: 20px;
+            background: #f8faf9;
+            border-radius: 16px;
+        }
+
+        .message {
+            margin-bottom: 18px;
+            padding: 14px 18px;
+            border-radius: 12px;
+            max-width: 80%;
+            font-size: 0.95em;
+            line-height: 1.5;
+        }
+
+        .message.user {
+            background: #123924;
+            color: white;
+            margin-left: auto;
+            text-align: right;
+        }
+
+        .message.assistant {
+            background: white;
+            border: 2px solid #e9ecef;
+            margin-right: auto;
+            color: #2d3748;
+        }
+
+        .chat-input-container {
+            display: flex;
+            gap: 12px;
+        }
+
+        .chat-input {
+            flex: 1;
+            padding: 14px 18px;
+            border: 2px solid #e9ecef;
+            border-radius: 12px;
+            font-size: 1em;
+            font-family: 'Quicksand', sans-serif;
+            transition: all 0.3s;
+        }
+
+        .chat-input:focus {
+            outline: none;
+            border-color: #649183;
+            box-shadow: 0 0 0 4px rgba(100, 145, 131, 0.1);
+        }
+
+        .send-btn {
+            padding: 14px 32px;
+            background: #649183;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+            font-family: 'Quicksand', sans-serif;
+            font-size: 1em;
+        }
+
+        .send-btn:hover:not(:disabled) {
+            background: #123924;
+        }
+
+        .send-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .reset-btn {
+            padding: 14px 32px;
+            background: #6c757d;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+            margin-bottom: 20px;
+            font-family: 'Quicksand', sans-serif;
+            font-size: 1em;
+        }
+
+        .reset-btn:hover {
+            background: #5a6268;
+            transform: translateY(-2px);
+        }
+
+        .logo-badge {
+            display: inline-block;
+            background: #F15B2D;
+            color: white;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 600;
+            margin-left: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🌍 Outil d'analyse des études antérieures</h1>
+            <p>LCL Environnement - Génie, environnement & développement durable</p>
+        </div>
+
+        <div class="config-section">
+            <div class="input-group">
+                <label for="apiKey">🔑 Clé API Anthropic</label>
+                <input type="password" id="apiKey" placeholder="sk-ant-api03-...">
+            </div>
+
+            <div class="input-group">
+                <label for="uploadArea">📄 Documents à analyser</label>
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-icon">📄</div>
+                    <h3>Glissez-déposez vos documents PDF ici</h3>
+                    <p>ou cliquez pour sélectionner (plusieurs fichiers acceptés)</p>
+                    <p class="small-text">✓ Supporte les documents de plusieurs centaines de pages</p>
+                    <input type="file" id="fileInput" accept=".pdf" multiple style="display: none;">
+                </div>
+            </div>
+
+            <div class="files-list" id="filesList"></div>
+
+            <button class="analyze-btn" id="analyzeBtn" disabled>
+                Analyser les documents
+            </button>
+        </div>
+
+        <div class="progress-section" id="progressSection">
+            <div class="progress-bar-container">
+                <div class="progress-bar" id="progressBar">0%</div>
+            </div>
+            <div class="progress-status" id="progressStatus">Initialisation...</div>
+        </div>
+
+        <div class="results-section" id="resultsSection">
+            <button class="reset-btn" id="resetBtn">🔄 Nouvelle analyse</button>
+            <h2>📊 Résultat de l'analyse<span class="logo-badge">MODE EXPERT</span></h2>
+            <div class="analysis-result" id="analysisResult"></div>
+
+            <div class="chat-section">
+                <h3>💬 Poser des questions</h3>
+                <div class="chat-messages" id="chatMessages"></div>
+                <div class="chat-input-container">
+                    <input type="text" class="chat-input" id="chatInput" placeholder="Posez votre question sur les documents ou l'analyse...">
+                    <button class="send-btn" id="sendBtn">Envoyer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+        let uploadedFiles = [];
+        let extractedTexts = [];
+        let sonnetAnalysis = '';
+        let opusAnalysis = '';
+        let finalSynthesis = '';
+        let conversationHistory = [];
+        let progressInterval = null;
+
+        // Éléments DOM
+        const apiKeyInput = document.getElementById('apiKey');
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const filesList = document.getElementById('filesList');
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        const progressSection = document.getElementById('progressSection');
+        const progressBar = document.getElementById('progressBar');
+        const progressStatus = document.getElementById('progressStatus');
+        const resultsSection = document.getElementById('resultsSection');
+        const analysisResultDiv = document.getElementById('analysisResult');
+        const chatMessages = document.getElementById('chatMessages');
+        const chatInput = document.getElementById('chatInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const resetBtn = document.getElementById('resetBtn');
+
+        // Charger la clé API sauvegardée
+        apiKeyInput.value = localStorage.getItem('anthropicApiKey') || '';
+        
+        apiKeyInput.addEventListener('input', (e) => {
+            localStorage.setItem('anthropicApiKey', e.target.value);
+            checkReadyToAnalyze();
+        });
+
+        // Gestion de l'upload
+        uploadArea.addEventListener('click', () => fileInput.click());
+        
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('drag-over');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('drag-over');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('drag-over');
+            handleFiles(e.dataTransfer.files);
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            handleFiles(e.target.files);
+        });
+
+        function handleFiles(files) {
+            for (let file of files) {
+                if (file.type === 'application/pdf') {
+                    uploadedFiles.push(file);
+                }
+            }
+            displayFiles();
+            checkReadyToAnalyze();
+        }
+
+        function displayFiles() {
+            filesList.innerHTML = '';
+            uploadedFiles.forEach((file, index) => {
+                const tag = document.createElement('div');
+                tag.className = 'file-tag';
+                tag.innerHTML = `
+                    ${file.name}
+                    <button onclick="removeFile(${index})">✕</button>
+                `;
+                filesList.appendChild(tag);
+            });
+        }
+
+        function removeFile(index) {
+            uploadedFiles.splice(index, 1);
+            displayFiles();
+            checkReadyToAnalyze();
+        }
+
+        function checkReadyToAnalyze() {
+            analyzeBtn.disabled = !(apiKeyInput.value && uploadedFiles.length > 0);
+        }
+
+        // Fonction pour appeler l'API avec retry en cas de timeout
+        async function callClaudeAPI(model, messages, maxRetries = 2) {
+            for (let attempt = 1; attempt <= maxRetries; attempt++) {
+                try {
+                    const response = await fetch('/api/claude', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            apiKey: apiKeyInput.value,
+                            model: model,
+                            max_tokens: 32000,
+                            messages: messages
+                        })
+                    });
+
+                    if (!response.ok) {
+                        let errorMessage = `Erreur HTTP ${response.status}`;
+                        try {
+                            const error = await response.json();
+                            errorMessage = error.error?.message || JSON.stringify(error);
+                        } catch (e) {
+                            const errorText = await response.text();
+                            errorMessage = errorText.substring(0, 200);
+                        }
+                        
+                        // Si c'est un timeout (504) et qu'on a des tentatives restantes, on réessaie
+                        if (response.status === 504 && attempt < maxRetries) {
+                            console.log(`Timeout détecté, tentative ${attempt}/${maxRetries}. Nouvelle tentative...`);
+                            await new Promise(resolve => setTimeout(resolve, 5000)); // Attendre 5 secondes
+                            continue;
+                        }
+                        
+                        throw new Error(`${errorMessage}`);
+                    }
+
+                    return await response.json();
+
+                } catch (error) {
+                    if (attempt === maxRetries) {
+                        throw error;
+                    }
+                    console.log(`Erreur tentative ${attempt}/${maxRetries}:`, error.message);
+                    await new Promise(resolve => setTimeout(resolve, 5000));
+                }
+            }
+        }
+        async function extractPdfText(file) {
+            const arrayBuffer = await file.arrayBuffer();
+            const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
+            let fullText = '';
+
+            for (let i = 1; i <= pdf.numPages; i++) {
+                const page = await pdf.getPage(i);
+                const textContent = await page.getTextContent();
+                const pageText = textContent.items.map(item => item.str).join(' ');
+                fullText += `\n--- PAGE ${i} ---\n` + pageText + '\n';
+            }
+
+            return fullText;
+        }
+
+        // Analyse principale en mode expert
+        analyzeBtn.addEventListener('click', async () => {
+            progressSection.classList.add('active');
+            resultsSection.classList.remove('active');
+            
+            updateProgress(5, '📄 Extraction du texte des PDF...');
+
+            try {
+                // Extraction des textes
+                extractedTexts = [];
+                for (let i = 0; i < uploadedFiles.length; i++) {
+                    updateProgress(5 + (15 / uploadedFiles.length * i), `📖 Extraction du fichier ${i + 1}/${uploadedFiles.length}...`);
+                    const text = await extractPdfText(uploadedFiles[i]);
+                    extractedTexts.push({
+                        filename: uploadedFiles[i].name,
+                        text: text
+                    });
+                }
+
+                // === ANALYSE 1 : SONNET 4.5 ===
+                updateProgress(20, '🔵 ANALYSE 1/3 - Claude Sonnet 4.5', 'Extraction rapide et complète en cours...');
+                startProgressAnimation(20, 40, 3000, '🔵 ANALYSE 1/3 - Claude Sonnet 4.5', 'Analyse en cours - Cela peut prendre plusieurs minutes pour les gros documents');
+                
+                const promptSonnet = buildAnalysisPrompt('sonnet');
+                
+                const responseSonnet = await fetch('/api/claude', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        apiKey: apiKeyInput.value,
+                        model: 'claude-sonnet-4-5-20250929',
+                        max_tokens: 32000,
+                        messages: [{
+                            role: 'user',
+                            content: promptSonnet
+                        }]
+                    })
+                });
+
+                if (!responseSonnet.ok) {
+                    let errorMessage = `Erreur HTTP ${responseSonnet.status}`;
+                    try {
+                        const error = await responseSonnet.json();
+                        errorMessage = error.error?.message || JSON.stringify(error);
+                    } catch (e) {
+                        const errorText = await responseSonnet.text();
+                        errorMessage = errorText.substring(0, 200);
+                    }
+                    throw new Error(`Erreur Sonnet (${responseSonnet.status}): ${errorMessage}`);
+                }
+
+                const dataSonnet = await responseSonnet.json();
+                sonnetAnalysis = dataSonnet.content[0].text;
+
+                if (progressInterval) clearInterval(progressInterval);
+                updateProgress(45, '✅ Sonnet terminé. Attente avant Opus...', 'Gestion des limites API - 60 secondes');
+                
+                // Attendre 60 secondes avec progression visuelle
+                for (let i = 60; i > 0; i--) {
+                    const waitPercent = 45 + ((60 - i) / 60) * 5; // 45% à 50%
+                    updateProgress(waitPercent, `⏱️ Attente ${i}s avant Opus 4.1`, 'Gestion des limites API pour éviter les erreurs');
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                }
+
+                // === ANALYSE 2 : OPUS 4.1 ===
+                updateProgress(50, '🟣 ANALYSE 2/3 - Claude Opus 4.1', 'Validation approfondie en cours...');
+                startProgressAnimation(50, 70, 3000, '🟣 ANALYSE 2/3 - Claude Opus 4.1', 'Analyse approfondie - Patience, c\'est le modèle le plus puissant');
+                
+                const promptOpus = buildAnalysisPrompt('opus');
+                
+                const responseOpus = await fetch('/api/claude', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        apiKey: apiKeyInput.value,
+                        model: 'claude-opus-4-20250514',
+                        max_tokens: 32000,
+                        messages: [{
+                            role: 'user',
+                            content: promptOpus
+                        }]
+                    })
+                });
+
+                if (!responseOpus.ok) {
+                    let errorMessage = `Erreur HTTP ${responseOpus.status}`;
+                    try {
+                        const error = await responseOpus.json();
+                        errorMessage = error.error?.message || JSON.stringify(error);
+                    } catch (e) {
+                        const errorText = await responseOpus.text();
+                        errorMessage = errorText.substring(0, 200);
+                    }
+                    throw new Error(`Erreur Opus (${responseOpus.status}): ${errorMessage}`);
+                }
+
+                const dataOpus = await responseOpus.json();
+                opusAnalysis = dataOpus.content[0].text;
+
+                if (progressInterval) clearInterval(progressInterval);
+                updateProgress(75, '✅ Opus terminé. Attente avant synthèse finale...', 'Gestion des limites API - 60 secondes');
+                
+                // Attendre 60 secondes avec progression visuelle
+                for (let i = 60; i > 0; i--) {
+                    const waitPercent = 75 + ((60 - i) / 60) * 5; // 75% à 80%
+                    updateProgress(waitPercent, `⏱️ Attente ${i}s avant synthèse finale`, 'Dernière étape après cette pause');
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                }
+
+                // === SYNTHÈSE FINALE ===
+                updateProgress(80, '🎯 ANALYSE 3/3 - Synthèse finale', 'Comparaison et optimisation des deux analyses...');
+                startProgressAnimation(80, 95, 3000, '🎯 ANALYSE 3/3 - Synthèse finale', 'Création du rapport final optimisé');
+                
+                const synthesisPrompt = `Tu es un expert en évaluation environnementale. Tu as devant toi DEUX analyses complètes du même ensemble de documents, réalisées par deux systèmes différents.
+
+**ANALYSE SONNET 4.5 (Rapide et exhaustive) :**
+${sonnetAnalysis}
+
+**ANALYSE OPUS 4.1 (Validation approfondie) :**
+${opusAnalysis}
+
+**TA MISSION - SYNTHÈSE OPTIMALE :**
+
+1. **COMPARER** les deux analyses point par point
+2. **IDENTIFIER** :
+   - Les informations confirmées par les deux (haute confiance)
+   - Les informations présentes dans une seule analyse (à vérifier)
+   - Les divergences ou contradictions (signaux d'alerte)
+3. **PRODUIRE** une synthèse finale qui :
+   - Conserve TOUTES les informations pertinentes des deux analyses
+   - Privilégie les données confirmées par les deux modèles
+   - Signale explicitement les divergences avec "⚠️ DIVERGENCE : [explication]"
+   - Ajoute "✓✓ CONFIRMÉ" pour les éléments validés par les deux
+   - Respecte strictement le format LCL à puces
+
+**FORMAT DE SORTIE :**
+
+=== SYNTHÈSE EXPERT - MODE DOUBLE VALIDATION ===
+
+[Résumé optimisé au format LCL avec marqueurs de validation]
+
+=== NOTES DE VALIDATION ===
+• Éléments confirmés par les deux analyses : [liste]
+• Divergences détectées : [liste avec explications]
+• Recommandations de vérification : [si nécessaire]
+
+**RÈGLE ABSOLUE :** Ne JAMAIS perdre d'information critique. En cas de doute, inclure les deux versions avec explication.`;
+
+                const responseSynthesis = await fetch('/api/claude', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        apiKey: apiKeyInput.value,
+                        model: 'claude-opus-4-20250514',
+                        max_tokens: 32000,
+                        messages: [{
+                            role: 'user',
+                            content: synthesisPrompt
+                        }]
+                    })
+                });
+
+                if (!responseSynthesis.ok) {
+                    let errorMessage = `Erreur HTTP ${responseSynthesis.status}`;
+                    try {
+                        const error = await responseSynthesis.json();
+                        errorMessage = error.error?.message || JSON.stringify(error);
+                    } catch (e) {
+                        const errorText = await responseSynthesis.text();
+                        errorMessage = errorText.substring(0, 200);
+                    }
+                    throw new Error(`Erreur synthèse (${responseSynthesis.status}): ${errorMessage}`);
+                }
+
+                const dataSynthesis = await responseSynthesis.json();
+                finalSynthesis = dataSynthesis.content[0].text;
+
+                if (progressInterval) clearInterval(progressInterval);
+                updateProgress(100, '✅ Analyse experte terminée !', 'Votre rapport est prêt');
+
+                setTimeout(() => {
+                    progressSection.classList.remove('active');
+                    resultsSection.classList.add('active');
+                    analysisResultDiv.textContent = finalSynthesis;
+                }, 500);
+
+            } catch (error) {
+                if (progressInterval) clearInterval(progressInterval);
+                updateProgress(0, `❌ Erreur: ${error.message}`);
+                console.error('Erreur détaillée:', error);
+                alert(`Erreur détectée: ${error.message}\n\nVérifiez:\n1. Votre clé API Anthropic est valide\n2. Vous avez des crédits sur votre compte Anthropic\n3. La console du navigateur (F12) pour plus de détails`);
+            }
+        });
+
+        function buildAnalysisPrompt(modelType) {
+            const modelSpecificInstructions = modelType === 'sonnet' 
+                ? `Tu es Claude Sonnet 4.5. Ta force est l'extraction rapide, exhaustive et structurée. CONCENTRE-TOI sur :
+- Extraire TOUTES les données factuelles (lots, dates, coordonnées, noms, références)
+- Structurer l'information de manière systématique
+- Couvrir l'ensemble du document sans rien omettre
+- Identifier rapidement les sections et leur contenu`
+                : `Tu es Claude Opus 4.1. Ta force est le raisonnement approfondi et la validation critique. CONCENTRE-TOI sur :
+- Valider la cohérence des informations
+- Identifier les incohérences ou contradictions
+- Évaluer la qualité méthodologique
+- Approfondir l'analyse des risques et implications
+- Fournir des recommandations stratégiques détaillées`;
+
+            const systemPrompt = `${modelSpecificInstructions}
+
+L'agent résumé études antérieures est un professionnel en évaluation environnementale phase 1 travaillant dans la province de Québec au Canada. Il se spécialise à réviser des rapports d'anciennes évaluation environnementale Phase 1, des caractérisations environnementales phase 2, des anciennes réhabilitations environnementales ainsi que des rapports résumés d'anciennes études environnementales.
+
+**MÉTHODOLOGIE D'ANALYSE EN PROFONDEUR - PLUSIEURS PASSES OBLIGATOIRES :**
+
+Tu dois procéder à une analyse EXHAUSTIVE en plusieurs étapes :
+
+**PASSE 1 - LECTURE RAPIDE ET IDENTIFICATION (Survol stratégique) :**
+- Identifier rapidement le type d'étude pour chaque document
+- Repérer les sections principales et la structure globale
+- Noter les éléments critiques qui nécessiteront une attention particulière
+
+**PASSE 2 - ANALYSE DÉTAILLÉE (Lecture approfondie) :**
+- Extraire TOUTES les informations pertinentes section par section
+- Documenter précisément chaque donnée (lots, coordonnées, dates, noms de sondages, concentrations)
+- Identifier les références croisées entre documents
+- Noter les incohérences ou lacunes potentielles
+
+**PASSE 3 - VALIDATION ET RECOUPEMENT (Vérification croisée) :**
+- Vérifier la cohérence entre toutes les informations extraites
+- Valider les références d'études mentionnées
+- Confirmer les numéros cadastraux et localisations
+- S'assurer qu'aucun élément critique n'a été omis
+
+**PASSE 4 - SYNTHÈSE FINALE (Rédaction structurée) :**
+- Produire le résumé au format LCL avec TOUTES les informations validées
+- Ajouter les Notes LCL pour chaque limitation ou précision nécessaire
+- Générer l'avis professionnel interne avec recommandations
+
+**EXIGENCES CRITIQUES POUR L'ANALYSE :**
+- Ne jamais résumer ou abréger l'information - TOUT doit être documenté
+- Prendre le temps nécessaire pour une analyse complète, même pour des documents de plusieurs centaines de pages
+- En cas de doute sur une information, le mentionner explicitement avec "Note LCL : Vérification requise"
+- Traiter chaque document avec le même niveau de rigueur professionnelle
+
+**PREMIÈRE ÉTAPE OBLIGATOIRE : IDENTIFIER LE TYPE D'ÉTUDE**
+
+Analyse le(s) document(s) fourni(s) et détermine précisément le type d'étude pour chaque document:
+
+**A) ÉVALUATION ENVIRONNEMENTALE DE SITE (ÉES) :**
+- Phase I : Recherche historique, visite, pas d'échantillonnage
+- Phase I-II : Combinaison recherche + échantillonnage limité
+- Phase II : Caractérisation par échantillonnage systématique
+
+**B) CARACTÉRISATION ENVIRONNEMENTALE DE SOLS (CES) :**
+- Phase II : Échantillonnage ciblé pour confirmer contamination
+- Phase III : Délimitation détaillée de contamination confirmée
+
+**C) RÉHABILITATION ENVIRONNEMENTALE :**
+- Plan de réhabilitation
+- Travaux d'excavation/traitement
+- Rapport de fermeture/attestation
+
+**D) SUIVI ENVIRONNEMENTAL :**
+- Monitoring de panaches
+- Surveillance post-réhabilitation
+- Efficacité des mesures correctives
+
+**E) AUTRES :**
+- Analyse de risque toxicologique
+- Étude hydrogéologique
+- Expertise spécialisée
+
+Pour chaque document, génère un résumé selon le FORMAT À PUCES DE LCL avec:
+
+**STRUCTURE OBLIGATOIRE :**
+• [Information principale 1]
+• [Information principale 2]
+• [Information avec sous-détails] :
+  o [Sous-détail 1] ;
+  o [Sous-détail 2] ;
+  o Note LCL : [précision critique si nécessaire].
+• [Conclusion finale]
+
+**CONTENU OBLIGATOIRE À INCLURE :**
+
+1. **LOCALISATION PRÉCISE**
+2. **CONTEXTE DU MANDAT**
+3. **OBJECTIF ET PORTÉE**
+4. **ÉTAT ACTUEL DU SITE**
+5. **INFORMATIONS D'ENTREVUE (si applicable)**
+6. **ÉTUDES ANTÉRIEURES MENTIONNÉES**
+7. **CONCLUSION DE L'ÉTUDE**
+8. **ACTIVITÉS VISÉES ANNEXE III DU RPRT**
+9. **ANALYSE DÉTAILLÉE DES RISQUES PAR ACTIVITÉ**
+
+Ensuite, fournis un AVIS PROFESSIONNEL INTERNE avec:
+- Évaluation de la portée et limitations
+- Qualité méthodologique
+- Fiabilité des données
+- Implications pour une Phase I actuelle
+- Éléments résiduels critiques
+- Recommandations stratégiques
+
+**RÈGLES CRITIQUES :**
+- TOUJOURS préciser si l'étude couvre la même zone que le mandat actuel
+- Utiliser "Note LCL :" pour chaque élément hors scope
+- Numéros de lots cadastraux exacts
+- Références d'études précises
+- JAMAIS de balises HTML - format texte pur
+- Maximum 300 mots par résumé de document`;
+
+            let documentsContent = '';
+            extractedTexts.forEach((doc, index) => {
+                documentsContent += `\n\n=== DOCUMENT ${index + 1}: ${doc.filename} ===\n\n${doc.text}\n`;
+            });
+
+            return systemPrompt + '\n\n' + documentsContent;
+        }
+
+        function updateProgress(percent, status, details = '') {
+            progressBar.style.width = percent + '%';
+            progressBar.textContent = Math.round(percent) + '%';
+            
+            let statusHTML = status;
+            if (percent > 0 && percent < 100) {
+                statusHTML = `<span class="progress-spinner"></span>${status}`;
+            }
+            progressStatus.innerHTML = statusHTML;
+            
+            if (details) {
+                progressStatus.innerHTML += `<div class="progress-details">${details}</div>`;
+            }
+        }
+
+        function startProgressAnimation(startPercent, endPercent, duration, statusText, detailsText = '') {
+            if (progressInterval) clearInterval(progressInterval);
+            
+            let currentPercent = startPercent;
+            const increment = (endPercent - startPercent) / (duration / 100);
+            
+            progressInterval = setInterval(() => {
+                currentPercent += increment;
+                if (currentPercent >= endPercent) {
+                    currentPercent = endPercent;
+                    clearInterval(progressInterval);
+                }
+                updateProgress(currentPercent, statusText, detailsText);
+            }, 100);
+        }
+
+        // Chat
+        chatInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendChatMessage();
+        });
+
+        sendBtn.addEventListener('click', sendChatMessage);
+
+        async function sendChatMessage() {
+            const message = chatInput.value.trim();
+            if (!message || !finalSynthesis) return;
+
+            addMessageToChat('user', message);
+            chatInput.value = '';
+            sendBtn.disabled = true;
+
+            try {
+                conversationHistory.push({
+                    role: 'user',
+                    content: message
+                });
+
+                const contextPrompt = `Tu as précédemment analysé les documents suivants en MODE EXPERT (double validation Sonnet + Opus).
+
+SYNTHÈSE FINALE EXPERTE:
+${finalSynthesis}
+
+DOCUMENTS ORIGINAUX:
+${extractedTexts.map((doc, i) => `\n=== DOCUMENT ${i+1}: ${doc.filename} ===\n${doc.text.substring(0, 50000)}`).join('\n')}
+
+L'utilisateur pose maintenant une question. Réponds en te basant sur les documents ET la synthèse experte précédente.`;
+
+                const messages = [
+                    {
+                        role: 'user',
+                        content: contextPrompt
+                    },
+                    ...conversationHistory
+                ];
+
+                const response = await fetch('/api/claude', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        apiKey: apiKeyInput.value,
+                        model: 'claude-opus-4-20250514',
+                        max_tokens: 4096,
+                        messages: messages
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Erreur API');
+                }
+
+                const data = await response.json();
+                const answer = data.content[0].text;
+
+                conversationHistory.push({
+                    role: 'assistant',
+                    content: answer
+                });
+
+                addMessageToChat('assistant', answer);
+
+            } catch (error) {
+                addMessageToChat('assistant', '❌ Erreur: ' + error.message);
+            } finally {
+                sendBtn.disabled = false;
+            }
+        }
+
+        function addMessageToChat(role, content) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${role}`;
+            messageDiv.textContent = content;
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        // Reset
+        resetBtn.addEventListener('click', () => {
+            uploadedFiles = [];
+            extractedTexts = [];
+            sonnetAnalysis = '';
+            opusAnalysis = '';
+            finalSynthesis = '';
+            conversationHistory = [];
+            displayFiles();
+            resultsSection.classList.remove('active');
+            chatMessages.innerHTML = '';
+            checkReadyToAnalyze();
+        });
+    </script>
+</body>
+</html>
