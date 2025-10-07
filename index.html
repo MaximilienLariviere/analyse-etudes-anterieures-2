@@ -495,7 +495,9 @@
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
         let uploadedFiles = [];
+        let referenceFiles = [];
         let extractedTexts = [];
+        let referenceTexts = [];
         let sonnetAnalysis = '';
         let opusAnalysis = '';
         let finalSynthesis = '';
@@ -669,35 +671,11 @@
                 
                 const promptSonnet = buildAnalysisPrompt('sonnet');
                 
-                const responseSonnet = await fetch('/api/claude', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        apiKey: apiKeyInput.value,
-                        model: 'claude-sonnet-4-5-20250929',
-                        max_tokens: 32000,
-                        messages: [{
-                            role: 'user',
-                            content: promptSonnet
-                        }]
-                    })
-                });
-
-                if (!responseSonnet.ok) {
-                    let errorMessage = `Erreur HTTP ${responseSonnet.status}`;
-                    try {
-                        const error = await responseSonnet.json();
-                        errorMessage = error.error?.message || JSON.stringify(error);
-                    } catch (e) {
-                        const errorText = await responseSonnet.text();
-                        errorMessage = errorText.substring(0, 200);
-                    }
-                    throw new Error(`Erreur Sonnet (${responseSonnet.status}): ${errorMessage}`);
-                }
-
-                const dataSonnet = await responseSonnet.json();
+                const dataSonnet = await callClaudeAPI('claude-sonnet-4-5-20250929', [{
+                    role: 'user',
+                    content: promptSonnet
+                }]);
+                
                 sonnetAnalysis = dataSonnet.content[0].text;
 
                 if (progressInterval) clearInterval(progressInterval);
@@ -716,35 +694,11 @@
                 
                 const promptOpus = buildAnalysisPrompt('opus');
                 
-                const responseOpus = await fetch('/api/claude', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        apiKey: apiKeyInput.value,
-                        model: 'claude-opus-4-20250514',
-                        max_tokens: 32000,
-                        messages: [{
-                            role: 'user',
-                            content: promptOpus
-                        }]
-                    })
-                });
-
-                if (!responseOpus.ok) {
-                    let errorMessage = `Erreur HTTP ${responseOpus.status}`;
-                    try {
-                        const error = await responseOpus.json();
-                        errorMessage = error.error?.message || JSON.stringify(error);
-                    } catch (e) {
-                        const errorText = await responseOpus.text();
-                        errorMessage = errorText.substring(0, 200);
-                    }
-                    throw new Error(`Erreur Opus (${responseOpus.status}): ${errorMessage}`);
-                }
-
-                const dataOpus = await responseOpus.json();
+                const dataOpus = await callClaudeAPI('claude-opus-4-20250514', [{
+                    role: 'user',
+                    content: promptOpus
+                }]);
+                
                 opusAnalysis = dataOpus.content[0].text;
 
                 if (progressInterval) clearInterval(progressInterval);
@@ -796,35 +750,11 @@ ${opusAnalysis}
 
 **RÈGLE ABSOLUE :** Ne JAMAIS perdre d'information critique. En cas de doute, inclure les deux versions avec explication.`;
 
-                const responseSynthesis = await fetch('/api/claude', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        apiKey: apiKeyInput.value,
-                        model: 'claude-opus-4-20250514',
-                        max_tokens: 32000,
-                        messages: [{
-                            role: 'user',
-                            content: synthesisPrompt
-                        }]
-                    })
-                });
-
-                if (!responseSynthesis.ok) {
-                    let errorMessage = `Erreur HTTP ${responseSynthesis.status}`;
-                    try {
-                        const error = await responseSynthesis.json();
-                        errorMessage = error.error?.message || JSON.stringify(error);
-                    } catch (e) {
-                        const errorText = await responseSynthesis.text();
-                        errorMessage = errorText.substring(0, 200);
-                    }
-                    throw new Error(`Erreur synthèse (${responseSynthesis.status}): ${errorMessage}`);
-                }
-
-                const dataSynthesis = await responseSynthesis.json();
+                const dataSynthesis = await callClaudeAPI('claude-opus-4-20250514', [{
+                    role: 'user',
+                    content: synthesisPrompt
+                }]);
+                
                 finalSynthesis = dataSynthesis.content[0].text;
 
                 if (progressInterval) clearInterval(progressInterval);
