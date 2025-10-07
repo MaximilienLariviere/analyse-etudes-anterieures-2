@@ -77,7 +77,7 @@
             font-size: 1em;
         }
 
-        .input-group input {
+        .input-group input, .input-group select {
             width: 100%;
             padding: 14px 18px;
             border: 2px solid #e9ecef;
@@ -88,10 +88,23 @@
             background: white;
         }
 
-        .input-group input:focus {
+        .input-group input:focus, .input-group select:focus {
             outline: none;
             border-color: #649183;
             box-shadow: 0 0 0 4px rgba(100, 145, 131, 0.1);
+        }
+
+        .model-select {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .model-info {
+            flex: 1;
+            font-size: 0.9em;
+            color: #6c757d;
+            font-style: italic;
         }
 
         .upload-area {
@@ -425,15 +438,23 @@
             transform: translateY(-2px);
         }
 
-        .logo-badge {
+        .model-badge {
             display: inline-block;
-            background: #F15B2D;
-            color: white;
             padding: 6px 14px;
             border-radius: 20px;
             font-size: 0.85em;
             font-weight: 600;
             margin-left: 12px;
+        }
+
+        .badge-sonnet {
+            background: #4A90E2;
+            color: white;
+        }
+
+        .badge-opus {
+            background: #9B59B6;
+            color: white;
         }
     </style>
 </head>
@@ -448,6 +469,19 @@
             <div class="input-group">
                 <label for="apiKey">🔑 Clé API Anthropic</label>
                 <input type="password" id="apiKey" placeholder="sk-ant-api03-...">
+            </div>
+
+            <div class="input-group">
+                <label for="modelSelect">🤖 Modèle d'analyse</label>
+                <div class="model-select">
+                    <select id="modelSelect">
+                        <option value="claude-sonnet-4-5-20250929">Sonnet 4.5 - Rapide et économique (recommandé)</option>
+                        <option value="claude-opus-4-20250514">Opus 4.1 - Maximum de précision</option>
+                    </select>
+                </div>
+                <div class="model-info" id="modelInfo">
+                    ⚡ Rapide (1-2 min) • 💵 Économique (~$0.50) • ✓ Excellent pour 90% des analyses
+                </div>
             </div>
 
             <div class="input-group">
@@ -477,7 +511,7 @@
 
         <div class="results-section" id="resultsSection">
             <button class="reset-btn" id="resetBtn">🔄 Nouvelle analyse</button>
-            <h2>📊 Résultat de l'analyse<span class="logo-badge">MODE EXPERT</span></h2>
+            <h2>📊 Résultat de l'analyse<span class="model-badge" id="modelBadge"></span></h2>
             <div class="analysis-result" id="analysisResult"></div>
 
             <div class="chat-section">
@@ -496,14 +530,15 @@
 
         let uploadedFiles = [];
         let extractedTexts = [];
-        let sonnetAnalysis = '';
-        let opusAnalysis = '';
-        let finalSynthesis = '';
+        let analysisResult = '';
         let conversationHistory = [];
         let progressInterval = null;
+        let selectedModel = 'claude-sonnet-4-5-20250929';
 
         // Éléments DOM
         const apiKeyInput = document.getElementById('apiKey');
+        const modelSelect = document.getElementById('modelSelect');
+        const modelInfo = document.getElementById('modelInfo');
         const uploadArea = document.getElementById('uploadArea');
         const fileInput = document.getElementById('fileInput');
         const filesList = document.getElementById('filesList');
@@ -513,18 +548,36 @@
         const progressStatus = document.getElementById('progressStatus');
         const resultsSection = document.getElementById('resultsSection');
         const analysisResultDiv = document.getElementById('analysisResult');
+        const modelBadge = document.getElementById('modelBadge');
         const chatMessages = document.getElementById('chatMessages');
         const chatInput = document.getElementById('chatInput');
         const sendBtn = document.getElementById('sendBtn');
         const resetBtn = document.getElementById('resetBtn');
 
-        // Charger la clé API sauvegardée
+        // Charger la clé API et le modèle sauvegardés
         apiKeyInput.value = localStorage.getItem('anthropicApiKey') || '';
+        selectedModel = localStorage.getItem('selectedModel') || 'claude-sonnet-4-5-20250929';
+        modelSelect.value = selectedModel;
+        updateModelInfo();
         
         apiKeyInput.addEventListener('input', (e) => {
             localStorage.setItem('anthropicApiKey', e.target.value);
             checkReadyToAnalyze();
         });
+
+        modelSelect.addEventListener('change', (e) => {
+            selectedModel = e.target.value;
+            localStorage.setItem('selectedModel', selectedModel);
+            updateModelInfo();
+        });
+
+        function updateModelInfo() {
+            if (selectedModel === 'claude-sonnet-4-5-20250929') {
+                modelInfo.innerHTML = '⚡ Rapide (1-2 min) • 💵 Économique (~$0.50) • ✓ Excellent pour 90% des analyses';
+            } else {
+                modelInfo.innerHTML = '🔬 Analyse approfondie (2-3 min) • 💰 Premium (~$2.50) • ✓ Maximum de précision';
+            }
+        }
 
         // Gestion de l'upload
         uploadArea.addEventListener('click', () => fileInput.click());
@@ -581,7 +634,6 @@
             analyzeBtn.disabled = !(apiKeyInput.value && uploadedFiles.length > 0);
         }
 
-        // Fonction pour appeler l'API avec retry en cas de timeout
         async function callClaudeAPI(model, messages, maxRetries = 2) {
             for (let attempt = 1; attempt <= maxRetries; attempt++) {
                 try {
@@ -644,12 +696,13 @@
             return fullText;
         }
 
-        // Analyse principale en mode expert
+        // Analyse principale
         analyzeBtn.addEventListener('click', async () => {
             progressSection.classList.add('active');
             resultsSection.classList.remove('active');
             
-            updateProgress(5, '📄 Extraction du texte des PDF...');
+            const modelName = selectedModel === 'claude-sonnet-4-5-20250929' ? 'Sonnet 4.5' : 'Opus 4.1';
+            updateProgress(5, `📄 Extraction du texte des PDF...`);
 
             try {
                 // Extraction des textes
@@ -663,105 +716,30 @@
                     });
                 }
 
-                // === ANALYSE 1 : SONNET 4.5 ===
-                updateProgress(20, '🔵 ANALYSE 1/3 - Claude Sonnet 4.5', 'Extraction rapide et complète en cours...');
-                startProgressAnimation(20, 40, 3000, '🔵 ANALYSE 1/3 - Claude Sonnet 4.5', 'Analyse en cours - Cela peut prendre plusieurs minutes pour les gros documents');
+                // Analyse unique
+                updateProgress(20, `🔍 Analyse par ${modelName}`, 'Analyse en cours - Cela peut prendre quelques minutes...');
+                startProgressAnimation(20, 95, 3000, `🔍 Analyse par ${modelName}`, 'Traitement complet du document selon le format LCL');
                 
-                const promptSonnet = buildAnalysisPrompt('sonnet');
+                const prompt = buildAnalysisPrompt();
                 
-                const dataSonnet = await callClaudeAPI('claude-sonnet-4-5-20250929', [{
+                const data = await callClaudeAPI(selectedModel, [{
                     role: 'user',
-                    content: promptSonnet
+                    content: prompt
                 }]);
                 
-                sonnetAnalysis = dataSonnet.content[0].text;
+                analysisResult = data.content[0].text;
 
                 if (progressInterval) clearInterval(progressInterval);
-                updateProgress(45, '✅ Sonnet terminé. Attente avant Opus...', 'Gestion des limites API - 60 secondes');
-                
-                // Attendre 60 secondes avec progression visuelle
-                for (let i = 60; i > 0; i--) {
-                    const waitPercent = 45 + ((60 - i) / 60) * 5;
-                    updateProgress(waitPercent, `⏱️ Attente ${i}s avant Opus 4.1`, 'Gestion des limites API pour éviter les erreurs');
-                    await new Promise(resolve => setTimeout(resolve, 1000));
-                }
+                updateProgress(100, '✅ Analyse terminée !', 'Votre rapport est prêt');
 
-                // === ANALYSE 2 : OPUS 4.1 ===
-                updateProgress(50, '🟣 ANALYSE 2/3 - Claude Opus 4.1', 'Validation approfondie en cours...');
-                startProgressAnimation(50, 70, 3000, '🟣 ANALYSE 2/3 - Claude Opus 4.1', 'Analyse approfondie - Patience, c\'est le modèle le plus puissant');
-                
-                const promptOpus = buildAnalysisPrompt('opus');
-                
-                const dataOpus = await callClaudeAPI('claude-opus-4-20250514', [{
-                    role: 'user',
-                    content: promptOpus
-                }]);
-                
-                opusAnalysis = dataOpus.content[0].text;
-
-                if (progressInterval) clearInterval(progressInterval);
-                updateProgress(75, '✅ Opus terminé. Attente avant synthèse finale...', 'Gestion des limites API - 60 secondes');
-                
-                // Attendre 60 secondes avec progression visuelle
-                for (let i = 60; i > 0; i--) {
-                    const waitPercent = 75 + ((60 - i) / 60) * 5;
-                    updateProgress(waitPercent, `⏱️ Attente ${i}s avant synthèse finale`, 'Dernière étape après cette pause');
-                    await new Promise(resolve => setTimeout(resolve, 1000));
-                }
-
-                // === SYNTHÈSE FINALE ===
-                updateProgress(80, '🎯 ANALYSE 3/3 - Synthèse finale', 'Comparaison et optimisation des deux analyses...');
-                startProgressAnimation(80, 95, 3000, '🎯 ANALYSE 3/3 - Synthèse finale', 'Création du rapport final optimisé');
-                
-                const synthesisPrompt = `Tu es un expert en évaluation environnementale. Tu as devant toi DEUX analyses complètes du même ensemble de documents, réalisées par deux systèmes différents.
-
-**ANALYSE SONNET 4.5 (Rapide et exhaustive) :**
-${sonnetAnalysis}
-
-**ANALYSE OPUS 4.1 (Validation approfondie) :**
-${opusAnalysis}
-
-**TA MISSION - SYNTHÈSE OPTIMALE :**
-
-1. **COMPARER** les deux analyses point par point
-2. **IDENTIFIER** :
-   - Les informations confirmées par les deux (haute confiance)
-   - Les informations présentes dans une seule analyse (à vérifier)
-   - Les divergences ou contradictions (signaux d'alerte)
-3. **PRODUIRE** une synthèse finale qui :
-   - Conserve TOUTES les informations pertinentes des deux analyses
-   - Privilégie les données confirmées par les deux modèles
-   - Signale explicitement les divergences avec "⚠️ DIVERGENCE : [explication]"
-   - Ajoute "✓✓ CONFIRMÉ" pour les éléments validés par les deux
-   - Respecte strictement le format LCL à puces
-
-**FORMAT DE SORTIE :**
-
-=== SYNTHÈSE EXPERT - MODE DOUBLE VALIDATION ===
-
-[Résumé optimisé au format LCL avec marqueurs de validation]
-
-=== NOTES DE VALIDATION ===
-• Éléments confirmés par les deux analyses : [liste]
-• Divergences détectées : [liste avec explications]
-• Recommandations de vérification : [si nécessaire]
-
-**RÈGLE ABSOLUE :** Ne JAMAIS perdre d'information critique. En cas de doute, inclure les deux versions avec explication.`;
-
-                const dataSynthesis = await callClaudeAPI('claude-opus-4-20250514', [{
-                    role: 'user',
-                    content: synthesisPrompt
-                }]);
-                
-                finalSynthesis = dataSynthesis.content[0].text;
-
-                if (progressInterval) clearInterval(progressInterval);
-                updateProgress(100, '✅ Analyse experte terminée !', 'Votre rapport est prêt');
+                // Mettre à jour le badge du modèle
+                modelBadge.className = 'model-badge ' + (selectedModel === 'claude-sonnet-4-5-20250929' ? 'badge-sonnet' : 'badge-opus');
+                modelBadge.textContent = modelName;
 
                 setTimeout(() => {
                     progressSection.classList.remove('active');
                     resultsSection.classList.add('active');
-                    analysisResultDiv.textContent = finalSynthesis;
+                    analysisResultDiv.textContent = analysisResult;
                 }, 500);
 
             } catch (error) {
@@ -772,23 +750,8 @@ ${opusAnalysis}
             }
         });
 
-        function buildAnalysisPrompt(modelType) {
-            const modelSpecificInstructions = modelType === 'sonnet' 
-                ? `Tu es Claude Sonnet 4.5. Ta force est l'extraction rapide, exhaustive et structurée. CONCENTRE-TOI sur :
-- Extraire TOUTES les données factuelles (lots, dates, coordonnées, noms, références)
-- Structurer l'information de manière systématique
-- Couvrir l'ensemble du document sans rien omettre
-- Identifier rapidement les sections et leur contenu`
-                : `Tu es Claude Opus 4.1. Ta force est le raisonnement approfondi et la validation critique. CONCENTRE-TOI sur :
-- Valider la cohérence des informations
-- Identifier les incohérences ou contradictions
-- Évaluer la qualité méthodologique
-- Approfondir l'analyse des risques et implications
-- Fournir des recommandations stratégiques détaillées`;
-
-            const systemPrompt = `${modelSpecificInstructions}
-
-L'agent résumé études antérieures est un professionnel en évaluation environnementale phase 1 travaillant dans la province de Québec au Canada. Il se spécialise à réviser des rapports d'anciennes évaluation environnementale Phase 1, des caractérisations environnementales phase 2, des anciennes réhabilitations environnementales ainsi que des rapports résumés d'anciennes études environnementales.
+        function buildAnalysisPrompt() {
+            const systemPrompt = `L'agent résumé études antérieures est un professionnel en évaluation environnementale phase 1 travaillant dans la province de Québec au Canada. Il se spécialise à réviser des rapports d'anciennes évaluation environnementale Phase 1, des caractérisations environnementales phase 2, des anciennes réhabilitations environnementales ainsi que des rapports résumés d'anciennes études environnementales.
 
 **NOTE IMPORTANTE :**
 Les documents présents dans le projet knowledge servent uniquement d'EXEMPLES DE RÉFÉRENCE pour illustrer la méthodologie et les formats LCL. Ils ne doivent PAS être traités comme l'étude à réviser, sauf indication contraire explicite de l'utilisateur.
@@ -827,6 +790,20 @@ Tu dois procéder à une analyse EXHAUSTIVE en plusieurs étapes :
 - En cas de doute sur une information, le mentionner explicitement avec "Note LCL : Vérification requise"
 - Traiter chaque document avec le même niveau de rigueur professionnelle
 
+**FORMAT DE SORTIE OBLIGATOIRE :**
+
+Tu dois produire EXACTEMENT ce format en 3 sections numérotées :
+
+1. IDENTIFICATION DU TYPE D'ÉTUDE
+Type d'étude identifié : [Type exact selon classification ci-dessous]
+Justification : [Explication détaillée des éléments qui permettent cette identification]
+
+2. RÉSUMÉ FORMAT LCL - [TYPE D'ÉTUDE]
+[Contenu au format à puces strict selon le type identifié]
+
+3. AVIS PROFESSIONNEL INTERNE
+[Contenu structuré avec sous-sections]
+
 **PREMIÈRE ÉTAPE OBLIGATOIRE : IDENTIFIER LE TYPE D'ÉTUDE**
 
 Analyse le(s) document(s) fourni(s) et détermine précisément le type d'étude pour chaque document:
@@ -854,10 +831,6 @@ Analyse le(s) document(s) fourni(s) et détermine précisément le type d'étude
 - Analyse de risque toxicologique
 - Étude hydrogéologique
 - Expertise spécialisée
-
-**CONFIRME LE TYPE AVANT DE PROCÉDER À L'ANALYSE :**
-Type d'étude identifié : [À compléter]
-Justification : [Expliquer les éléments qui permettent cette identification]
 
 **DEUXIÈME ÉTAPE : GÉNÉRATION DU RÉSUMÉ SELON LE FORMAT LCL**
 
@@ -1126,7 +1099,22 @@ Avant finalisation, vérifier que :
 6. **VALIDATION CROISÉE OBLIGATOIRE :**
    - Cohérence entre différentes sections du document
    - Vérification des références d'études citées
-   - Identification des contradictions potentielles`;
+   - Identification des contradictions potentielles
+
+**RAPPEL CRITIQUE DU FORMAT DE SORTIE :**
+
+Tu DOIS produire exactement ce format :
+
+1. IDENTIFICATION DU TYPE D'ÉTUDE
+[Contenu]
+
+2. RÉSUMÉ FORMAT LCL - [TYPE]
+[Contenu à puces]
+
+3. AVIS PROFESSIONNEL INTERNE
+[Contenu structuré]
+
+NE PAS ajouter de sections de validation croisée, de marqueurs ✓✓ CONFIRMÉ ou ⚠️ DIVERGENCE. Le format doit être identique à ce qui sortirait de l'application Claude standard.`;
 
             let documentsContent = '';
             extractedTexts.forEach((doc, index) => {
@@ -1176,7 +1164,7 @@ Avant finalisation, vérifier que :
 
         async function sendChatMessage() {
             const message = chatInput.value.trim();
-            if (!message || !finalSynthesis) return;
+            if (!message || !analysisResult) return;
 
             addMessageToChat('user', message);
             chatInput.value = '';
@@ -1188,15 +1176,15 @@ Avant finalisation, vérifier que :
                     content: message
                 });
 
-                const contextPrompt = `Tu as précédemment analysé les documents suivants en MODE EXPERT (double validation Sonnet + Opus).
+                const contextPrompt = `Tu as précédemment analysé les documents suivants selon le format LCL :
 
-SYNTHÈSE FINALE EXPERTE:
-${finalSynthesis}
+ANALYSE PRÉCÉDENTE:
+${analysisResult}
 
 DOCUMENTS ORIGINAUX:
 ${extractedTexts.map((doc, i) => `\n=== DOCUMENT ${i+1}: ${doc.filename} ===\n${doc.text.substring(0, 50000)}`).join('\n')}
 
-L'utilisateur pose maintenant une question. Réponds en te basant sur les documents ET la synthèse experte précédente.`;
+L'utilisateur pose maintenant une question. Réponds en te basant sur les documents ET ton analyse précédente.`;
 
                 const messages = [
                     {
@@ -1213,7 +1201,7 @@ L'utilisateur pose maintenant une question. Réponds en te basant sur les docume
                     },
                     body: JSON.stringify({
                         apiKey: apiKeyInput.value,
-                        model: 'claude-opus-4-20250514',
+                        model: selectedModel,
                         max_tokens: 4096,
                         messages: messages
                     })
@@ -1252,9 +1240,7 @@ L'utilisateur pose maintenant une question. Réponds en te basant sur les docume
         resetBtn.addEventListener('click', () => {
             uploadedFiles = [];
             extractedTexts = [];
-            sonnetAnalysis = '';
-            opusAnalysis = '';
-            finalSynthesis = '';
+            analysisResult = '';
             conversationHistory = [];
             displayFiles();
             resultsSection.classList.remove('active');
